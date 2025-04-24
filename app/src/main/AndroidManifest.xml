@@ -2,12 +2,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Permiso para Internet -->
+    <!-- Permisos de Ubicación -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Necesario para geofencing en Android Q (API 29) y superior cuando la app no está en primer plano -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <!-- Añadir este permiso -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Asegúrate que INTERNET también está -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Permiso para Servicio en Primer Plano (Necesario desde Android P) -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <!-- Permiso para iniciar servicio en primer plano inmediatamente (Android 12+) -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" /> <!-- Necesario para notificaciones en Android 13+ -->
+    <!-- Permiso para Foreground Service (necesario en Android P y superior) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Permiso específico para dataSync en Android 14+ -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
 
 
     <application
@@ -52,6 +59,15 @@
             android:name=".HomeAssistantService"
             android:exported="false"
             android:foregroundServiceType="dataSync"/>
+
+        <!-- Añadir este Receiver -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true"> <!-- Debe ser true para recibir BOOT_COMPLETED -->
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
     </application>
 

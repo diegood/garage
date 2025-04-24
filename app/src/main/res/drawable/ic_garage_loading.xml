@@ -1,0 +1,77 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- ########  GARAGE (misma base que los otros iconos) ######## -->
+
+    <!-- Techo y paredes externas -->
+    <path
+        android:fillColor="#8BC34A"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.8"
+        android:pathData="M12,2 L3,9 L3,10 L5,10 L5,22 L19,22 L19,10 L21,10 L21,9 L12,2 Z"/>
+
+    <!-- Columnas laterales -->
+    <path
+        android:fillColor="#4CAF50"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.8"
+        android:pathData="
+            M5,10 L7,10 L7,22 L5,22 Z
+            M17,10 L19,10 L19,22 L17,22 Z"/>
+
+    <!-- Ventanas superiores -->
+    <path
+        android:fillColor="#37474F"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.6"
+        android:pathData="
+            M6,4.5 L9,4.5 L9,6.3 L6,6.3 Z
+            M10.5,4.5 L13.5,4.5 L13.5,6.3 L10.5,6.3 Z
+            M15,4.5 L18,4.5 L18,6.3 L15,6.3 Z"/>
+
+    <!-- Interior sombreado -->
+    <path
+        android:fillColor="#CFD8DC"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.8"
+        android:pathData="M7,10 L17,10 L17,22 L7,22 Z"/>
+
+    <!-- Piso/base -->
+    <path
+        android:fillColor="#757575"
+        android:pathData="M5,22 L19,22 L19,23 L5,23 Z"/>
+
+    <!-- ########  SPINNER (carga) ######## -->
+    <!-- Grupo giratorio para animar con ObjectAnimator -->
+    <group
+        android:name="spinner_group"
+        android:pivotX="12"
+        android:pivotY="16"
+        android:rotation="0">
+
+        <!-- Arco de 270° que deja un hueco, típico de un loader -->
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="#2196F3"
+            android:strokeWidth="1.8"
+            android:strokeLineCap="round"
+            android:pathData="
+                M12,12
+                A4,4 0 1,1 11.99,12.01" />
+
+        <!-- Flecha en el extremo para reforzar el sentido de giro -->
+        <path
+            android:fillColor="#2196F3"
+            android:pathData="
+                M16,15
+                L17.5,15
+                L17.5,13.5
+                L19,15
+                L17.5,16.5
+                L17.5,15 Z"/>
+    </group>
+
+</vector>

@@ -1,43 +1,46 @@
 package com.github.diegood.mygaragedoor
 
-//import GarageWidgetProvider
 import android.content.Context
 import android.content.Intent
-import android.os.Handler
-import android.os.Looper
+import android.os.Handler // Importar Handler
+import android.os.Looper // Importar Looper
 import android.util.Log
 import okhttp3.*
 import org.json.JSONObject
-import java.util.concurrent.CopyOnWriteArrayList // Add this import
+import org.json.JSONArray
+// import java.util.concurrent.CopyOnWriteArrayList // No parece usarse, se puede quitar si no es necesario
 
-// Convert class to object (singleton)
 object HomeAssistantWS {
     private var webSocket: WebSocket? = null
-    // private val listeners = CopyOnWriteArrayList<WSListener>() // <-- Eliminado
-    private var lastKnownState: Boolean? = null // Store the last known state
-    private var isConnecting = false // Flag to prevent multiple connection attempts
-    private var isConnected = false // Flag to track connection status
-    private var appContext: Context? = null // <-- Añadido para el contexto
-    private var messageIdCounter = 2 // Start command IDs from 2 (1 is used for subscription)
+    private var lastKnownState: Boolean? = null 
+    private var isConnecting = false 
+    private var isConnected = false 
+    private var appContext: Context? = null 
+    private var messageIdCounter = GET_STATES_ID + 1 // Asegurar que los comandos empiecen después de los IDs fijos
+    private const val SUBSCRIBE_ID = 1
+    private const val GET_STATES_ID = 2
 
-    // Acción para el Broadcast
+    // ++ Reconnection Logic ++
+    private val reconnectHandler = Handler(Looper.getMainLooper())
+    private var reconnectAttempts = 0
+    private const val MAX_RECONNECT_ATTEMPTS = 10 // Limitar intentos
+    private const val INITIAL_RECONNECT_DELAY_MS = 5000L // 5 segundos iniciales
+    private const val MAX_RECONNECT_DELAY_MS = 60000L // 1 minuto máximo
+    private var isManualDisconnect = false // Para evitar reconexión si desconectamos manualmente
+
+    private val reconnectRunnable = Runnable {
+        Log.d("HA_WS_Reconnect", "Ejecutando intento de reconexión #$reconnectAttempts")
+        connect() // Intentar conectar de nuevo
+    }
+    // -- End Reconnection Logic --
+
     const val ACTION_GARAGE_STATE_CHANGED = "com.github.diegood.mygaragedoor.ACTION_GARAGE_STATE_CHANGED"
     const val EXTRA_IS_OPEN = "com.github.diegood.mygaragedoor.EXTRA_IS_OPEN"
 
-
-    // Método para inicializar con el contexto de la aplicación
     fun init(context: Context) {
-        appContext = context.applicationContext // Guardar contexto de aplicación
+        appContext = context.applicationContext
         Log.d("HA_WS", "HomeAssistantWS inicializado con contexto.")
-        // Podrías iniciar la conexión aquí si quieres que siempre esté activa
-        // connect()
     }
-
-
-    // --- Métodos de Listener eliminados ---
-    // interface WSListener { ... }
-    // fun registerListener(...) { ... }
-    // fun unregisterListener(...) { ... }
 
     fun getCurrentState(): Boolean? {
         return lastKnownState
@@ -48,173 +51,202 @@ object HomeAssistantWS {
              Log.e("HA_WS_Connect", "Error: Intento de conexión antes de llamar a init().")
              return
         }
-        // Log al intentar conectar y evitar múltiples conexiones simultáneas
-        Log.d("HA_WS_Connect", "Intento de conexión. isConnected: $isConnected, isConnecting: $isConnecting")
-        if (isConnected || isConnecting) {
-            Log.d("HA_WS", "Connection attempt skipped: Already connected or connecting.")
-            return
+        // Evitar múltiples llamadas concurrentes a connect()
+        if (isConnecting) {
+             Log.d("HA_WS_Connect", "Intento de conexión omitido: ya se está conectando.")
+             return
         }
-        isConnecting = true // Marcar como conectando
+         if (isConnected) {
+             Log.d("HA_WS_Connect", "Intento de conexión omitido: ya está conectado.")
+             // Si ya está conectado, reseteamos los intentos por si acaso
+             resetReconnectAttempts()
+             return
+         }
+
+        isConnecting = true
+        isManualDisconnect = false // Resetear al intentar conectar
         Log.d("HA_WS_Connect", "Estableciendo nueva conexión WebSocket...")
 
-
         val client = OkHttpClient()
-        // Ensure BuildConfig values are accessible
         val url = try {
              BuildConfig.HA_URL.replace("https", "wss") + "/api/websocket"
         } catch (e: Exception) {
             Log.e("HA_WS", "Error accessing BuildConfig.HA_URL. Make sure it's defined.", e)
             isConnecting = false
-            return // Stop connection attempt if URL is invalid
+            // ++ Programar reintento si falla al obtener URL ++
+            scheduleReconnect()
+            return
         }
         val token = try {
             BuildConfig.HA_TOKEN
         } catch (e: Exception) {
              Log.e("HA_WS", "Error accessing BuildConfig.HA_TOKEN. Make sure it's defined.", e)
              isConnecting = false
-             return // Stop connection attempt if Token is invalid
+             // ++ Programar reintento si falla al obtener Token ++
+             scheduleReconnect()
+             return
         }
-
 
         val request = Request.Builder()
             .url(url)
-            // .header("Authorization", "Bearer $token") // Auth header might not be needed if using token in message
             .build()
+
+        // Cancelar cualquier reintento pendiente antes de crear un nuevo socket
+        reconnectHandler.removeCallbacks(reconnectRunnable)
 
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 isConnected = true
-                isConnecting = false // Conexión establecida
-                Log.d("HA_WS", "Conexión WebSocket establecida con Home Assistant")
-                // Send auth message using the token from BuildConfig
-                 webSocket.send("{\"type\": \"auth\", \"access_token\": \"$token\"}")
+                isConnecting = false
+                // ++ Resetear intentos al conectar exitosamente ++
+                resetReconnectAttempts()
+                Log.d("HA_WS", "Conexión WebSocket establecida.")
 
-                // Subscribe to state changes for the specific entity
-                val subscriptionMessage = """
-                {
-                    "id": 1,
-                    "type": "subscribe_events",
-                    "event_type": "state_changed"
-                }
-                """.trimIndent()
-                 // We will filter by entity_id in onMessage
-
-                Log.d("HA_WS", "Enviando subscripción general a state_changed: $subscriptionMessage")
-                webSocket.send(subscriptionMessage)
+                webSocket.send("{\"type\": \"auth\", \"access_token\": \"$token\"}")
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
-               // Log.d("HA_WS", "Mensaje recibido: $text")
                 try {
                     val json = JSONObject(text)
                     when (json.optString("type")) {
                         "auth_required" -> Log.d("HA_WS", "Autenticación requerida")
-                        "auth_ok" -> Log.d("HA_WS", "Autenticación exitosa")
+                        "auth_ok" -> {
+                            Log.d("HA_WS", "Autenticación exitosa")
+                            // Asegurarse de resetear intentos aquí también por si acaso
+                            resetReconnectAttempts()
+
+                            val subscriptionMessage = """
+                            {
+                                "id": $SUBSCRIBE_ID,
+                                "type": "subscribe_events",
+                                "event_type": "state_changed"
+                            }
+                            """.trimIndent()
+                            Log.d("HA_WS", "Enviando subscripción a state_changed (ID: $SUBSCRIBE_ID)")
+                            webSocket.send(subscriptionMessage)
+
+
+                            val getStatesMessage = """
+                            {
+                                "id": $GET_STATES_ID,
+                                "type": "get_states"
+                            }
+                            """.trimIndent()
+                            Log.d("HA_WS", "Solicitando estados actuales (ID: $GET_STATES_ID)")
+                            webSocket.send(getStatesMessage)
+                        }
                         "event" -> {
-                            if (json.optInt("id") == 1 && json.has("event")) {
+                            if (json.optInt("id") == SUBSCRIBE_ID && json.has("event")) {
                                 val event = json.getJSONObject("event")
-                                if (event.has("data")) {
+                                if (event.optString("event_type") == "state_changed" && event.has("data")) {
                                     val eventData = event.getJSONObject("data")
                                     val entityId = eventData.optString("entity_id")
-                                    if (entityId == "input_boolean.garage_prueba") {
+                                    if (entityId == BuildConfig.HA_STATE_ENTITY_ID) {
                                         if (eventData.has("new_state")) {
-
                                             val newState = eventData.getJSONObject("new_state")
-                                            val state = newState.optString("state")
-                                            val isOpen = state == "on"
-                                            Log.d("HA_WS", "Cambio detectado en $entityId - Nuevo estado: $state.")
-
-                                            // Comprobar si el estado realmente cambió
-                                            if (lastKnownState != isOpen) {
-                                                lastKnownState = isOpen
-                                                // Enviar broadcast en lugar de notificar listeners
-                                                broadcastState(isOpen)
-                                            } else {
-                                                Log.d("HA_WS", "Estado no cambió ($isOpen), no se envía broadcast.")
-                                            }
+                                            val stateStr = newState.optString("state", "unknown")
+                                            val newStateBool = stateStr == "on" 
+                                            Log.d("HA_WS_Event", "Cambio de estado para $entityId recibido: $stateStr ($newStateBool)")
+                                            updateStateAndNotify(newStateBool)
                                         }
                                     }
                                 }
                             }
                         }
-                         "result" -> {
-                             if (json.optInt("id") == 1) { // Check if it's the result for our subscription
-                                 if (json.optBoolean("success", false)) {
-                                     Log.d("HA_WS", "Suscripción a state_changed confirmada.")
-                                     // Optional: Request initial state after successful subscription?
-                                     // You might need another message type like 'get_states' if HA supports it
-                                 } else {
-                                     val error = json.optJSONObject("error")
-                                     Log.e("HA_WS", "Error en la suscripción a state_changed: ${error?.toString()}")
-                                 }
-                             }
-                         }
+                        "result" -> {
+                            val resultId = json.optInt("id")
+                            val success = json.optBoolean("success", false)
+                            // Log.d("HA_WS_Result", "Resultado recibido para ID: $resultId, Success: $success") // Log menos verboso
+
+                            if (resultId == GET_STATES_ID && success && json.has("result")) {
+                                Log.d("HA_WS_Result", "Procesando resultado de get_states (ID: $GET_STATES_ID)")
+                                val results = json.getJSONArray("result")
+                                var initialStateFound = false
+                                for (i in 0 until results.length()) {
+                                    val entityState = results.getJSONObject(i)
+                                    val entityId = entityState.optString("entity_id")
+                                    if (entityId == BuildConfig.HA_STATE_ENTITY_ID) {
+                                        val stateStr = entityState.optString("state", "unknown")
+                                        val initialStateBool = stateStr == "on"
+                                        Log.d("HA_WS_Result", "Estado inicial encontrado para $entityId: $stateStr ($initialStateBool)")
+                                        updateStateAndNotify(initialStateBool)
+                                        initialStateFound = true
+                                        break
+                                    }
+                                }
+                                if (!initialStateFound) {
+                                     Log.w("HA_WS_Result", "No se encontró el estado inicial para ${BuildConfig.HA_STATE_ENTITY_ID} en la respuesta get_states.")
+                                }
+                            } else if (!success) {
+                                val error = json.optJSONObject("error")
+                                Log.e("HA_WS_Result", "Comando fallido (ID: $resultId): ${error?.optString("message", "Unknown error")}")
+                            }
+                        }
+                        "pong" -> {
+                            Log.d("HA_WS", "Pong recibido (ID: ${json.optInt("id")})")
+                        }
                         else -> Log.d("HA_WS", "Tipo de mensaje no manejado: ${json.optString("type")}")
                     }
                 } catch (e: Exception) {
-                    Log.e("HA_WS", "Error parsing message: ${e.message}", e)
+                    Log.e("HA_WS", "Error procesando mensaje: ${e.message}", e)
                 }
             }
 
-             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                 Log.d("HA_WS", "WebSocket closing: $code / $reason")
-                 isConnected = false
-                 isConnecting = false
-                 HomeAssistantWS.webSocket = null // Clear the reference
-             }
-
-
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                Log.e("HA_WS", "Error en WebSocket: ${t.message}", t)
                 isConnected = false
                 isConnecting = false
-                HomeAssistantWS.webSocket = null // Clear the reference on failure too
+                Log.e("HA_WS", "Error en conexión WebSocket: ${t.message}", t)
+                // ++ Programar reintento en caso de fallo ++
+                scheduleReconnect()
+            }
+
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                isConnected = false
+                isConnecting = false
+                Log.d("HA_WS", "WebSocket cerrándose: $code / $reason")
+                webSocket.close(1000, null) // Asegurar cierre limpio
+            }
+
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                isConnected = false
+                isConnecting = false
+                Log.d("HA_WS", "WebSocket cerrado: $code / $reason")
+                // ++ Programar reintento si se cierra inesperadamente ++
+                scheduleReconnect()
             }
         })
+        // Limpiar referencia al cliente OkHttp para evitar fugas
+        // client.dispatcher.executorService.shutdown() // Considera si esto es necesario o si OkHttp lo maneja bien
     }
 
-    // Método para enviar el broadcast
-    private fun broadcastState(isOpen: Boolean) {
-        if (appContext == null) {
-            Log.e("HA_WS", "Error: Intento de enviar broadcast sin contexto.")
-            return
-        }
-        Log.d("HA_WS_Broadcast", "Enviando broadcast: $ACTION_GARAGE_STATE_CHANGED, isOpen: $isOpen")
-        val intent = Intent(ACTION_GARAGE_STATE_CHANGED).apply {
-            putExtra(EXTRA_IS_OPEN, isOpen)
-            // Importante: Hacer el intent explícito para el receptor si es posible
-            // o añadir FLAG_INCLUDE_STOPPED_PACKAGES si el receptor puede no estar activo
-            // Por ahora, usamos un broadcast implícito estándar
-            setPackage(appContext!!.packageName) // Hace el broadcast más seguro y eficiente
-        }
-        appContext!!.sendBroadcast(intent)
-    }
-
-    fun disconnect() {
-         // Only close if connected and potentially check if listeners exist
-         if (isConnected) {
-            Log.d("HA_WS", "Disconnecting WebSocket...")
-            webSocket?.close(1000, "Client requested disconnect")
-            webSocket = null
-            isConnected = false
-            isConnecting = false
-            Log.d("HA_WS_Connect", "WebSocket desconectado y variables reseteadas.")
+    // Función auxiliar para actualizar estado y notificar
+    private fun updateStateAndNotify(newState: Boolean?) {
+        if (lastKnownState != newState) {
+            lastKnownState = newState
+            Log.i("HA_WS_State", "Estado actualizado a: $newState. Enviando broadcast.")
+            val intent = Intent(ACTION_GARAGE_STATE_CHANGED).apply {
+                putExtra(EXTRA_IS_OPEN, newState)
+                `package` = appContext?.packageName
+            }
+             appContext?.sendBroadcast(intent)
         } else {
-             Log.d("HA_WS_Connect", "Desconexión solicitada pero no estaba conectado.")
-         }
+             // Log.d("HA_WS_State", "El estado recibido ($newState) es el mismo que el actual. No se envía broadcast.") // Log menos verboso
+        }
     }
 
-    // ++ Add this function ++
+
     fun sendToggleCommand() {
         if (!isConnected || webSocket == null) {
-            Log.w("HA_WS_Command", "No se puede enviar el comando toggle: WebSocket no conectado.")
-            // Optional: Attempt to reconnect?
-            // connect()
+            Log.w("HA_WS_Command", "No se puede enviar comando toggle: WebSocket no conectado.")
+            // Opcional: Intentar conectar si no está conectado y no se está reconectando ya
+            if (!isConnecting && reconnectAttempts == 0) {
+                 Log.d("HA_WS_Command", "Intentando conectar antes de enviar comando...")
+                 connect()
+            }
             return
         }
-
-        val commandId = messageIdCounter++ // Increment ID for each command
-        val entityId = "input_boolean.garage_prueba" // Make sure this is your correct entity ID
+        val commandId = messageIdCounter++
+        val entityId = BuildConfig.HA_OPENER_ENTITY_ID
         val toggleCommand = """
         {
             "id": $commandId,
@@ -227,8 +259,51 @@ object HomeAssistantWS {
         }
         """.trimIndent()
 
-        Log.d("HA_WS_Command", "Enviando comando toggle para $entityId (ID: $commandId): $toggleCommand")
+        Log.d("HA_WS_Command", "Enviando comando toggle para $entityId (ID: $commandId)")
         webSocket?.send(toggleCommand)
     }
-    // -- End of added function --
+
+    fun disconnect() {
+        Log.d("HA_WS", "Solicitando desconexión manual del WebSocket.")
+        isManualDisconnect = true // Marcar como desconexión manual
+        reconnectHandler.removeCallbacks(reconnectRunnable) // Cancelar reintentos pendientes
+        webSocket?.close(1000, "Client requested disconnect")
+        webSocket = null
+        isConnected = false
+        isConnecting = false
+        reconnectAttempts = 0 // Resetear intentos al desconectar manualmente
+        lastKnownState = null
+    }
+
+    // ++ Reconnection Helper Methods ++
+    private fun scheduleReconnect() {
+        // No reintentar si nos desconectamos manualmente o si ya estamos conectados/conectando
+        if (isManualDisconnect || isConnected || isConnecting) {
+            Log.d("HA_WS_Reconnect", "Reconexión omitida. ManualDisconnect: $isManualDisconnect, Connected: $isConnected, Connecting: $isConnecting")
+            return
+        }
+
+        if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            Log.w("HA_WS_Reconnect", "Se alcanzó el máximo número de intentos de reconexión ($MAX_RECONNECT_ATTEMPTS).")
+            reconnectAttempts = 0 // Resetear para futuros intentos si es necesario
+            return
+        }
+
+        reconnectAttempts++
+        // Calcular delay con backoff exponencial
+        val delay = (INITIAL_RECONNECT_DELAY_MS * Math.pow(2.0, (reconnectAttempts - 1).toDouble())).toLong()
+        val cappedDelay = delay.coerceAtMost(MAX_RECONNECT_DELAY_MS) // Limitar al máximo
+
+        Log.d("HA_WS_Reconnect", "Programando intento de reconexión #$reconnectAttempts en ${cappedDelay / 1000} segundos.")
+        reconnectHandler.postDelayed(reconnectRunnable, cappedDelay)
+    }
+
+    private fun resetReconnectAttempts() {
+        if (reconnectAttempts > 0) {
+            Log.d("HA_WS_Reconnect", "Reseteando intentos de reconexión.")
+            reconnectAttempts = 0
+            reconnectHandler.removeCallbacks(reconnectRunnable) // Cancelar cualquier reintento pendiente
+        }
+    }
+    // -- End Reconnection Helper Methods --
 }

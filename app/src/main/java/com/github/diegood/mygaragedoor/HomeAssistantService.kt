@@ -4,8 +4,6 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-// import android.appwidget.AppWidgetManager // Ya no se necesita aquí
-// import android.content.ComponentName // Ya no se necesita aquí
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -13,92 +11,112 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-// import android.os.Handler // Ya no se necesita aquí
-// import android.os.Looper // Ya no se necesita aquí
 
-// Ya no implementa HomeAssistantWS.WSListener
 class HomeAssistantService : Service() {
 
-    private val NOTIFICATION_CHANNEL_ID = "HomeAssistantServiceChannel"
-    private val NOTIFICATION_ID = 1
+    companion object {
+        private const val NOTIFICATION_CHANNEL_ID = "HomeAssistantServiceChannel"
+        private const val NOTIFICATION_ID = 1
+        private var isGeofenceAdded = false // Bandera para añadir geovalla solo una vez
+    }
+
+    private lateinit var geofenceHelper: GeofenceHelper // Instancia del helper
 
     override fun onCreate() {
         super.onCreate()
-        Log.i("HomeAssistantService", "Servicio CREADO (onCreate).")
+        Log.d("HAService", "Servicio onCreate")
         createNotificationChannel()
-        // Ya no registramos listener
+        HomeAssistantWS.init(this)
+        geofenceHelper = GeofenceHelper(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.i("HomeAssistantService", "Servicio INICIADO (onStartCommand). Intent: $intent, Flags: $flags")
+        Log.i("HAService", ">>> Servicio onStartCommand INICIO <<<") // <-- Log añadido
 
-        // Asegurar conexión si queremos que el servicio la controle
-        // Si la conexión se inicia en Application, esta línea podría no ser necesaria
-        // o podría servir como un reintento si falló antes.
+        // Crear y mostrar la notificación para el servicio en primer plano
+        val notification = createNotification()
+        // Usar FOREGROUND_SERVICE_TYPE_DATA_SYNC si aplica (Android 14+)
+        // o 0 si no aplica o versiones anteriores
+        val foregroundServiceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+             android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        } else {
+             0 // O el tipo más apropiado si no es solo dataSync
+        }
+
+        try {
+             startForeground(NOTIFICATION_ID, notification/*, foregroundServiceType*/) // Comentado temporalmente si causa problemas en API < 34
+             Log.d("HAService", "Servicio iniciado en primer plano.")
+        } catch (e: Exception) {
+             Log.e("HAService", "Error al iniciar en primer plano: ${e.message}", e)
+             // Considerar iniciar como servicio normal si startForeground falla
+             // return START_STICKY
+        }
+
+
+        // Conectar el WebSocket
+        Log.d("HAService", "Intentando conectar WebSocket...")
         HomeAssistantWS.connect()
+        Log.d("HAService", "Llamada a connect() realizada.")
 
-        val notification = createNotification("Servicio Garaje Activo") // Mensaje genérico
-        startForeground(NOTIFICATION_ID, notification)
 
-        return START_STICKY // Intentar mantener el servicio vivo
+        // Añadir la geovalla si aún no se ha hecho
+        Log.d("HAService", "Comprobando si añadir geovalla. isGeofenceAdded = $isGeofenceAdded") // <-- Log añadido
+        if (!isGeofenceAdded) {
+            Log.i("HAService", ">>> Llamando a geofenceHelper.addGeofences()... <<<") // <-- Log añadido
+            geofenceHelper.addGeofences() // Intentará añadirla
+            isGeofenceAdded = true // Marcar como intentado
+            Log.d("HAService", "Llamada a addGeofences() realizada. isGeofenceAdded establecido a true.")
+        } else {
+             Log.d("HAService", "La geovalla ya se intentó añadir previamente.")
+        }
+
+        Log.d("HAService", "onStartCommand finalizando. Retornando START_STICKY.")
+        // START_STICKY asegura que el servicio se reinicie si el sistema lo mata
+        return START_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.w("HomeAssistantService", "****** SERVICIO DESTRUIDO (onDestroy) ******")
-        // Ya no desregistramos listener
-        // Considera si quieres desconectar el WS cuando el servicio muere.
-        // Si la conexión la maneja Application, quizás no quieras desconectar aquí.
-        // HomeAssistantWS.disconnect()
-        stopForeground(STOP_FOREGROUND_DETACH) // O true
+        Log.d("HAService", "Servicio onDestroy")
+        // Opcional: Desconectar WebSocket y/o eliminar geovallas si es necesario al detener el servicio
+        // HomeAssistantWS.disconnect(true) // Assuming disconnect takes a boolean for manual disconnect
+        // geofenceHelper.removeGeofences()
+
+        // Use the recommended way to stop foreground service and remove notification
+        stopForeground(Service.STOP_FOREGROUND_REMOVE)
+        Log.d("HAService", "Servicio detenido y notificación eliminada.")
     }
 
     override fun onBind(intent: Intent?): IBinder? {
+        // No necesitamos binding para este servicio
         return null
     }
 
-    // --- onStateChanged eliminado ---
-
-    // --- Métodos de Notificación (sin cambios) ---
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val serviceChannel = NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
-                "Home Assistant Service Channel",
-                NotificationManager.IMPORTANCE_LOW
+                "Home Assistant Service Channel", // Nombre visible para el usuario
+                NotificationManager.IMPORTANCE_LOW // Baja importancia para que no sea intrusiva
             )
             val manager = getSystemService(NotificationManager::class.java)
             manager?.createNotificationChannel(serviceChannel)
-            Log.d("HomeAssistantService", "Canal de notificación creado.")
+            Log.d("HAService", "Canal de notificación creado.")
         }
     }
 
-    private fun createNotification(contentText: String): Notification {
-        val notificationIntent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            notificationIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
+    private fun createNotification(): Notification {
+         // Aquí puedes añadir un PendingIntent para abrir la app si se toca la notificación
+         // val notificationIntent = Intent(this, MainActivity::class.java)
+         // val pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE)
 
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Servicio Garaje")
-            .setContentText(contentText)
-            .setSmallIcon(R.drawable.ic_garage_unknown) // Podrías querer un icono genérico aquí
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
+            .setContentTitle("Servicio Garaje Conectado")
+            .setContentText("Manteniendo conexión y ubicación...")
+            .setSmallIcon(R.drawable.ic_launcher_foreground) // Usa un icono apropiado
+            // .setContentIntent(pendingIntent) // Descomenta si añades el PendingIntent
+            .setOngoing(true) // Hace que la notificación no se pueda descartar fácilmente
+            .setPriority(NotificationCompat.PRIORITY_LOW) // Prioridad baja
             .build()
     }
-
-    // updateNotification probablemente ya no sea necesario aquí
-    /*
-    private fun updateNotification(contentText: String) {
-        val notification = createNotification(contentText)
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, notification)
-        Log.d("HomeAssistantService", "Notificación actualizada: $contentText")
-    }
-    */
 }

@@ -18,12 +18,13 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Add properties loading here
         val localProperties = Properties().apply { // Now 'Properties' should resolve correctly
             load(rootProject.file("local.properties").inputStream())
         }
         buildConfigField("String", "HA_TOKEN", "\"${localProperties.getProperty("HA_TOKEN")}\"")
         buildConfigField("String", "HA_URL", "\"${localProperties.getProperty("HA_URL")}\"")
+        buildConfigField("String", "HA_STATE_ENTITY_ID", "\"${localProperties.getProperty("HA_STATE_ENTITY_ID")}\"")
+        buildConfigField("String", "HA_OPENER_ENTITY_ID", "\"${localProperties.getProperty("HA_OPENER_ENTITY_ID")}\"")
     }
 
     buildTypes {
@@ -57,6 +58,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation(libs.androidx.room.external.antlr)
+    implementation("com.google.android.gms:play-services-location:21.2.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

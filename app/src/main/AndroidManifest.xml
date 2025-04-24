@@ -13,7 +13,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Permiso para Foreground Service (necesario en Android P y superior) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <!-- Permiso específico para dataSync en Android 14+ -->
+    <!-- Permiso específico para location foreground service (Android 10+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+    <!-- Mantener dataSync si también realizas sincronización de datos significativa -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
 
 
@@ -58,9 +60,10 @@
         <service
             android:name=".HomeAssistantService"
             android:exported="false"
-            android:foregroundServiceType="dataSync"/>
+            android:foregroundServiceType="location"/> <!-- Cambiado/Priorizado a location -->
 
-        <!-- Añadir este Receiver -->
+
+        <!-- Declaración del BootReceiver existente -->
         <receiver
             android:name=".BootReceiver"
             android:exported="true"> <!-- Debe ser true para recibir BOOT_COMPLETED -->
@@ -68,6 +71,10 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".GeofenceBroadcastReceiver"
+            android:exported="false" />
 
     </application>
 

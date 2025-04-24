@@ -31,7 +31,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
         // Obtener el tipo de transición
         val geofenceTransition = geofencingEvent.geofenceTransition
-
+        
         if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER ||
             geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
 

@@ -28,7 +28,7 @@ class GeofenceHelper(private val context: Context) {
     private val geofencingClient = LocationServices.getGeofencingClient(context)
 
     // Crea el PendingIntent que se disparará cuando ocurra una transición de geovalla
-    private val geofencePendingIntent: PendingIntent by lazy {
+    internal val geofencePendingIntent: PendingIntent by lazy { // Changed from private to internal
         val intent = Intent(context, GeofenceBroadcastReceiver::class.java)
         Log.d(TAG, "Intent creado: $intent")
         // Usamos FLAG_UPDATE_CURRENT para que el mismo PendingIntent se reutilice si ya existe,
@@ -37,12 +37,12 @@ class GeofenceHelper(private val context: Context) {
             context,
             0, // requestCode - 0 debería ser suficiente si solo hay un tipo de PendingIntent para geofence
             intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
     }
 
     // Construye el objeto Geofence
-    private fun buildGeofence(): Geofence? {
+    internal fun buildGeofence(): Geofence? { // Changed from private to internal
         return Geofence.Builder()
             // Establece el ID único para esta geovalla
             .setRequestId(GEOFENCE_ID)
@@ -62,11 +62,15 @@ class GeofenceHelper(private val context: Context) {
     }
 
     // Construye la solicitud de geovalla
-    private fun buildGeofencingRequest(geofence: Geofence): GeofencingRequest {
+    internal fun buildGeofencingRequest(geofence: Geofence): GeofencingRequest { // Changed from private to internal
         return GeofencingRequest.Builder().apply {
             // Especifica cómo se deben activar las notificaciones de geovalla
             // INITIAL_TRIGGER_ENTER indica que se debe activar GEOFENCE_TRANSITION_ENTER si el dispositivo ya está dentro al añadirla
-            setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+            setInitialTrigger(
+              GeofencingRequest.INITIAL_TRIGGER_ENTER or
+              GeofencingRequest.INITIAL_TRIGGER_EXIT
+            )
+        
             // Añade la geovalla (o lista de geovallas) a la solicitud
             addGeofence(geofence)
         }.build()

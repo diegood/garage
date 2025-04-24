@@ -17,7 +17,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
     <!-- Mantener dataSync si también realizas sincronización de datos significativa -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
-
+    <!-- ++ Añadir Permiso de Notificaciones (Android 13+) ++ -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
         android:name=".MyGarageDoorApp"

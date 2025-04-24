@@ -40,7 +40,22 @@ class HomeAssistantService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.i("HAService", ">>> Servicio onStartCommand INICIO <<<")
+        Log.i("HAService", ">>> Servicio onStartCommand INICIO <<< Action: ${intent?.action}") // Loguear la acción
+
+        // ++ Manejar la acción de la notificación ++
+        if (intent?.action == GeofenceBroadcastReceiver.ACTION_TOGGLE_FROM_NOTIFICATION) {
+            Log.i("HAService", "Recibida acción para abrir el garaje desde la notificación.")
+            HomeAssistantWS.sendToggleCommand()
+            // Opcional: Cerrar la notificación si AutoCancel no funcionó como esperado
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.cancel(GeofenceBroadcastReceiver.GEOFENCE_NOTIFICATION_ID) // Usar el ID correcto
+
+            // Podríamos detener el servicio aquí si esta es su única función,
+            // pero como maneja WS y geofencing, lo dejamos correr.
+            // return START_NOT_STICKY // O considerar no reiniciar si solo fue por la notificación
+        }
+        // -- Fin manejo acción notificación --
+
 
         // Crear y mostrar la notificación para el servicio en primer plano
         try {

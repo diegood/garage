@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Permiso para Internet -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Permiso para Servicio en Primer Plano (Necesario desde Android P) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <!-- Permiso para iniciar servicio en primer plano inmediatamente (Android 12+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" /> <!-- Necesario para notificaciones en Android 13+ -->
+
+
+    <application
+        android:name=".MyGarageDoorApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MyGarageDoor"
+        tools:targetApi="31">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Declaración del Widget Provider -->
+        <receiver
+            android:name=".GarageWidgetProvider"
+            android:exported="false"> <!-- Mantenlo false por seguridad -->
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <!-- Añade la acción del broadcast de estado -->
+                <action android:name="com.github.diegood.mygaragedoor.ACTION_GARAGE_STATE_CHANGED" />
+                <!-- Añade la acción para el clic (toggle) -->
+                <action android:name="com.github.diegood.ACTION_TOGGLE_GARAGE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/garage_widget_info" />
+        </receiver>
+
+        <!-- Declaración del Servicio -->
+        <service
+            android:name=".HomeAssistantService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"/>
+
+    </application>
+
+</manifest>

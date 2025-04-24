@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- ########  GARAGE  (estructura común) ######## -->
+
+    <!-- Techo y paredes externas -->
+    <path
+        android:fillColor="#8BC34A"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.8"
+        android:pathData="M12,2 L3,9 L3,10 L5,10 L5,22 L19,22 L19,10 L21,10 L21,9 L12,2 Z"/>
+
+    <!-- Columnas laterales (tono más oscuro) -->
+    <path
+        android:fillColor="#4CAF50"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.8"
+        android:pathData="
+            M5,10 L7,10 L7,22 L5,22 Z
+            M17,10 L19,10 L19,22 L17,22 Z"/>
+
+    <!-- Ventanas superiores -->
+    <path
+        android:fillColor="#37474F"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.6"
+        android:pathData="
+            M6,4.5 L9,4.5 L9,6.3 L6,6.3 Z
+            M10.5,4.5 L13.5,4.5 L13.5,6.3 L10.5,6.3 Z
+            M15,4.5 L18,4.5 L18,6.3 L15,6.3 Z"/>
+
+    <!-- Piso/base -->
+    <path
+        android:fillColor="#757575"
+        android:pathData="M5,22 L19,22 L19,23 L5,23 Z"/>
+
+    <!-- ########  PUERTA A MEDIA ALTURA  ######## -->
+
+    <!-- Parte inferior de la puerta (cerrada) -->
+    <path
+        android:fillColor="#CFD8DC"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.8"
+        android:pathData="M7,15 L17,15 L17,22 L7,22 Z"/>
+
+    <!-- Travesaños de los paneles -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.6"
+        android:pathData="
+            M7,17.5 L17,17.5
+            M7,20 L17,20"/>
+
+    <!-- Parte superior abierta (interior del garaje a la vista) -->
+    <path
+        android:fillColor="#B0BEC5"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.8"
+        android:pathData="M7,10 L17,10 L17,15 L7,15 Z"/>
+
+    <!-- ########  SIGNO DE INTERROGACIÓN  ######## -->
+    <!-- Símbolo estilizado para marcar estado desconocido -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.9"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="
+            M11.5,12
+            C11.5,10.8 12.4,10 13.5,10
+            C14.6,10 15.5,10.8 15.5,11.9
+            C15.5,12.8 14.9,13.4 14.3,13.8
+            C13.6,14.2 13.2,14.6 13.2,15.4
+            L13.2,15.9
+
+            M13.2,18.3
+            A0.9,0.9 0 1,0 13.2,20.1
+            A0.9,0.9 0 1,0 13.2,18.3 Z"/>
+
+</vector>

@@ -1,0 +1,117 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- ########  GARAGE  ######## -->
+
+    <!-- Techo y paredes externas -->
+    <path
+        android:fillColor="#8BC34A"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.8"
+        android:pathData="M12,2 L3,9 L3,10 L5,10 L5,22 L19,22 L19,10 L21,10 L21,9 L12,2 Z"/>
+
+    <!-- Columnas / marco (tonalidad más oscura) -->
+    <path
+        android:fillColor="#4CAF50"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.8"
+        android:pathData="
+            M5,10 L7,10 L7,22 L5,22 Z
+            M17,10 L19,10 L19,22 L17,22 Z"/>
+
+    <!-- Sombreado interior del garaje -->
+    <path
+        android:fillColor="#CFD8DC"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.8"
+        android:pathData="M7,10 L17,10 L17,22 L7,22 Z"/>
+
+    <!-- Riel/soporte superior de la puerta -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.8"
+        android:pathData="M7,11.5 L17,11.5 L17,12.5 L7,12.5 Z"/>
+
+    <!-- Ventanas superiores -->
+    <path
+        android:fillColor="#37474F"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.6"
+        android:pathData="
+            M6,4.5 L9,4.5 L9,6.3 L6,6.3 Z
+            M10.5,4.5 L13.5,4.5 L13.5,6.3 L10.5,6.3 Z
+            M15,4.5 L18,4.5 L18,6.3 L15,6.3 Z"/>
+
+    <!-- ########  CARRO  ######## -->
+
+    <!-- Carrocería -->
+    <path
+        android:fillColor="#F44336"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.8"
+        android:pathData="
+            M7,17 L17,17 L17,14
+            C17,13.45 16.55,13 16,13
+            L8,13
+            C7.45,13 7,13.45 7,14 Z"/>
+
+    <!-- Techo / parabrisas -->
+    <path
+        android:fillColor="#BBDEFB"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.6"
+        android:pathData="M9,13 L15,13 L15,11 L9,11 Z"/>
+
+    <!-- Parrilla -->
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="0.6"
+        android:fillColor="@android:color/transparent"
+        android:pathData="
+            M10,15 L14,15
+            M10,15.8 L14,15.8
+            M10,16.6 L14,16.6"/>
+
+    <!-- Faros -->
+    <path
+        android:fillColor="#FFEB3B"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.6"
+        android:pathData="
+            M8.5,15.7
+            A1,1 0 1,0 8.5,17.7
+            A1,1 0 1,0 8.5,15.7 Z
+            M15.5,15.7
+            A1,1 0 1,0 15.5,17.7
+            A1,1 0 1,0 15.5,15.7 Z"/>
+
+    <!-- Bumper -->
+    <path
+        android:fillColor="#B0BEC5"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.6"
+        android:pathData="M8,17.8 L16,17.8 L16,18.6 L8,18.6 Z"/>
+
+    <!-- Ruedas -->
+    <path
+        android:fillColor="#000000"
+        android:strokeColor="#000000"
+        android:strokeWidth="0.6"
+        android:pathData="
+            M9,20
+            A1.5,1.5 0 1,0 9,17
+            A1.5,1.5 0 1,0 9,20 Z
+            M15,20
+            A1.5,1.5 0 1,0 15,17
+            A1.5,1.5 0 1,0 15,20 Z"/>
+
+    <!-- Piso (opcional, da sensación de base) -->
+    <path
+        android:fillColor="#757575"
+        android:pathData="M5,22 L19,22 L19,23 L5,23 Z"/>
+
+</vector>

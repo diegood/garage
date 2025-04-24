@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">MyGarageDoor</string>
+    <string name="garage_door_status">Garage Door Status</string>
+    <string name="garage_status_open">Abierto</string>
+    <string name="garage_status_closed">Cerrado</string>
+    <string name="garage_status_unknown">Desconocido</string>
+    <string name="garage_status_error">Error</string>
+    <string name="garage_status_opening">Abriendo</string>
+    <string name="garage_status_closing">Cerrando</string>
+    <string name="garage_status_stopped">Detenido</string>
+</resources>

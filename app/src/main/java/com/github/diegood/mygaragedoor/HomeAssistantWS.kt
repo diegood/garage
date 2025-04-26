@@ -251,7 +251,7 @@ object HomeAssistantWS {
         {
             "id": $commandId,
             "type": "call_service",
-            "domain": "input_boolean",
+            "domain": "switch",
             "service": "toggle",
             "target": {
                 "entity_id": "$entityId"

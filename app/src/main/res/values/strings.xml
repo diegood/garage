@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">MyGarageDoor</string>
+    <string name="app_name">Garage almeria</string>
     <string name="garage_door_status">Garage Door Status</string>
     <string name="garage_status_outside_geofence">Fuera de zona</string>
     <string name="garage_status_open">Abierto</string>

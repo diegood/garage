@@ -25,6 +25,11 @@ class HomeAssistantService : Service() {
         @Volatile // <- Añadir Volatile para asegurar visibilidad entre hilos si fuera necesario
         private var isGeofenceAdded = false
     }
+    
+    override fun onBind(intent: Intent?): IBinder? {
+        // Este servicio no permite binding, retornamos null
+        return null
+    }
 
     private lateinit var geofenceHelper: GeofenceHelper
     // Necesitamos acceso al GeofencingClient para añadir los listeners aquí
@@ -99,40 +104,33 @@ class HomeAssistantService : Service() {
         // Añadir la geovalla si aún no se ha hecho y los permisos están concedidos
         Log.d("HAService", "Comprobando si añadir geovalla. isGeofenceAdded = $isGeofenceAdded")
         if (!isGeofenceAdded) {
-            // Verify permissions here too, in case the service restarts without going through MainActivity
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) { // Now ActivityCompat should be resolved
-                Log.i("HAService", "Permissions OK. Attempting to add geofence...")
+            // La verificación de permisos ya se realiza en MainActivity antes de iniciar el servicio
+            Log.i("HAService", "Permissions OK. Attempting to add geofence...")
 
-                // Construir la solicitud y el PendingIntent usando el Helper
-                val geofence = geofenceHelper.buildGeofence() // Necesitamos hacer públicas estas funciones o refactorizar
-                val request = geofence?.let { geofenceHelper.buildGeofencingRequest(it) } // Necesitamos hacer públicas estas funciones o refactorizar
-                val pendingIntent = geofenceHelper.geofencePendingIntent // Necesitamos hacer público el PendingIntent
+            // Construir la solicitud y el PendingIntent usando el Helper
+            val geofence = geofenceHelper.buildGeofence() // Necesitamos hacer públicas estas funciones o refactorizar
+            val request = geofence?.let { geofenceHelper.buildGeofencingRequest(it) } // Necesitamos hacer públicas estas funciones o refactorizar
+            val pendingIntent = geofenceHelper.geofencePendingIntent // Necesitamos hacer público el PendingIntent
 
-                if (request != null && pendingIntent != null) {
-                    geofencingClient.addGeofences(request, pendingIntent).run {
-                        addOnSuccessListener {
-                            Log.i("HAService", "Geovalla añadida correctamente")
-                            isGeofenceAdded = true // <-- Marcar como añadida SOLO en caso de éxito
-                        }
-                        addOnFailureListener { e ->
-                            Log.e("HAService", "No se pudo añadir la geovalla", e)
-                            isGeofenceAdded = false // <-- Marcar como NO añadida en caso de fallo (para reintentar)
-                            // Podrías añadir lógica de reintento aquí si es necesario
-                        }
+            if (request != null && pendingIntent != null) {
+                geofencingClient.addGeofences(request, pendingIntent).run {
+                    addOnSuccessListener {
+                        Log.i("HAService", "Geovalla añadida correctamente")
+                        isGeofenceAdded = true // <-- Marcar como añadida SOLO en caso de éxito
                     }
-                } else {
-                     Log.e("HAService", "No se pudo construir la solicitud o el PendingIntent para la geovalla.")
-                     isGeofenceAdded = false // Asegurar que se pueda reintentar
+                    addOnFailureListener { e ->
+                        Log.e("HAService", "No se pudo añadir la geovalla", e)
+                        isGeofenceAdded = false // <-- Marcar como NO añadida en caso de fallo (para reintentar)
+                        // Podrías añadir lógica de reintento aquí si es necesario
+                    }
                 }
-                // NO marcar isGeofenceAdded = true aquí fuera de los listeners
             } else {
-                Log.e("HAService", "No se puede añadir geovalla: Permiso ACCESS_FINE_LOCATION denegado.")
-                isGeofenceAdded = false // Asegurar que se pueda reintentar si se conceden permisos más tarde
-                // Considerar detener el servicio o notificar al usuario si los permisos son cruciales
-                // stopSelf()
+                Log.e("HAService", "No se pudo construir la solicitud o el PendingIntent para la geovalla.")
+                isGeofenceAdded = false // Asegurar que se pueda reintentar
             }
+            // NO marcar isGeofenceAdded = true aquí fuera de los listeners
         } else {
-             Log.d("HAService", "La geovalla ya fue añadida exitosamente previamente.")
+            Log.d("HAService", "La geovalla ya fue añadida exitosamente previamente.")
         }
 
         Log.d("HAService", "onStartCommand finalizando. Retornando START_STICKY.")
@@ -149,11 +147,6 @@ class HomeAssistantService : Service() {
         // Use the recommended way to stop foreground service and remove notification
         stopForeground(Service.STOP_FOREGROUND_REMOVE)
         Log.d("HAService", "Servicio detenido y notificación eliminada.")
-    }
-
-    override fun onBind(intent: Intent?): IBinder? {
-        // No necesitamos binding para este servicio
-        return null
     }
 
     private fun createNotificationChannel() {

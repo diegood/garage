@@ -45,6 +45,24 @@ object HomeAssistantWS {
     fun getCurrentState(): Boolean? {
         return lastKnownState
     }
+    
+    // Función para forzar una actualización del estado desde Home Assistant
+    fun forceStateUpdate() {
+        if (!isConnected) {
+            Log.d("HA_WS", "No se puede forzar actualización: no está conectado")
+            connect() // Intentar conectar si no está conectado
+            return
+        }
+        
+        val getStatesMessage = """
+        {
+            "id": $GET_STATES_ID,
+            "type": "get_states"
+        }
+        """.trimIndent()
+        Log.d("HA_WS", "Forzando actualización de estados (ID: $GET_STATES_ID)")
+        webSocket?.send(getStatesMessage)
+    }
 
     fun connect() {
         if (appContext == null) {

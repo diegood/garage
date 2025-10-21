@@ -46,6 +46,41 @@ class MainActivity : AppCompatActivity() {
 
         ivPuerta = findViewById(R.id.ivPuerta)
         tvEstado = findViewById(R.id.tvEstado)
+        
+        // Configurar botones
+        val btnRefresh = findViewById<android.widget.Button>(R.id.btnRefresh)
+        val btnToggle = findViewById<android.widget.Button>(R.id.btnToggle)
+        
+        // Configurar listener para el botón de actualizar
+        btnRefresh.setOnClickListener {
+            Log.d("MainActivity", "Botón de actualizar presionado")
+            tvEstado.text = "Estado: Actualizando..."
+            HomeAssistantWS.forceStateUpdate()
+            
+            // Programar una actualización de UI después de un breve retraso
+            ivPuerta.postDelayed({
+                val currentState = HomeAssistantWS.getCurrentState()
+                updateUI(currentState)
+            }, 1500) // 1.5 segundos de espera para dar tiempo a la respuesta
+        }
+        
+        // Configurar listener para el botón de abrir/cerrar
+        btnToggle.setOnClickListener {
+            Log.d("MainActivity", "Botón de abrir/cerrar presionado")
+            val currentState = HomeAssistantWS.getCurrentState()
+            if (currentState != null) {
+                HomeAssistantWS.sendToggleCommand()
+            } else {
+                tvEstado.text = "Estado: Desconocido, actualizando..."
+                HomeAssistantWS.forceStateUpdate()
+            }
+        }
+        
+        // Configurar listener para la imagen de la puerta (alternativa)
+        ivPuerta.setOnClickListener {
+            Log.d("MainActivity", "Imagen de puerta presionada")
+            btnToggle.performClick()
+        }
 
         // Verificar y solicitar permisos antes de iniciar el servicio o conectar WS
         checkAndRequestLocationPermissions()

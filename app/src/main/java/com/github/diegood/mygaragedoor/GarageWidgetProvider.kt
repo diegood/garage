@@ -78,19 +78,43 @@ class GarageWidgetProvider : AppWidgetProvider() {
             "com.github.diegood.ACTION_TOGGLE_GARAGE" -> {
                 Log.d("WidgetReceive", "Acción TOGGLE recibida.")
 
+                // Obtener el estado actual
+                val currentState = HomeAssistantWS.getCurrentState()
+                
                 // ++ Comprobar Geofence ANTES de procesar ++
                 if (!isInsideGeofence) {
-                    Log.w("WidgetReceive", "Acción TOGGLE ignorada: Fuera de la geovalla.")
-                    // Opcional: Actualizar icono a 'forbidden' si aún no lo está (aunque updateAppWidget debería manejarlo)
-                    appWidgetIds.forEach { appWidgetId ->
-                         updateAppWidget(context, appWidgetManager, appWidgetId, lastKnownState, isInsideGeofence)
+                    // Si está fuera del geofence pero el garaje está abierto, permitir cerrarlo
+                    if (currentState == true) {
+                        Log.d("WidgetReceive", "Fuera de geovalla pero garaje abierto. Permitiendo cierre.")
+                    } else {
+                        Log.w("WidgetReceive", "Acción TOGGLE ignorada: Fuera de la geovalla y garaje cerrado o estado desconocido.")
+                        // Actualizar icono a 'forbidden' si aún no lo está
+                        appWidgetIds.forEach { appWidgetId ->
+                            updateAppWidget(context, appWidgetManager, appWidgetId, lastKnownState, isInsideGeofence)
+                        }
+                        return // No hacer nada más si está fuera y el garaje no está abierto
                     }
-                    return // No hacer nada más si está fuera
                 }
                 // -- Fin comprobación Geofence --
 
                 if (isProcessingToggle) {
                     Log.d("WidgetReceive", "Acción TOGGLE ignorada: ya se está procesando una.")
+                    return
+                }
+
+                // Verificar si el estado es desconocido (null)
+                if (currentState == null) {
+                    Log.d("WidgetReceive", "Estado desconocido detectado. Forzando actualización en Home Assistant.")
+                    
+                    // Cambiar icono a loading para todos los widgets
+                    appWidgetIds.forEach { appWidgetId ->
+                        val views = RemoteViews(context.packageName, R.layout.widget_garage_door)
+                        views.setImageViewResource(R.id.btn_garage, R.drawable.ic_garage_loading)
+                        appWidgetManager.partiallyUpdateAppWidget(appWidgetId, views)
+                    }
+                    
+                    // Forzar actualización del estado
+                    HomeAssistantWS.forceStateUpdate()
                     return
                 }
 
